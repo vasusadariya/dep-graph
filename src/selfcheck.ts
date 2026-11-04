@@ -47,6 +47,28 @@ console.log(
   ),
 );
 
+const ids = new Set<string>(nodes.map((n: any) => n.id));
+const dangling = edges.filter((e: any) => !ids.has(e.from) || !ids.has(e.to)).length;
+const adj = new Map<string, string[]>();
+for (const e of edges) adj.set(e.from, [...(adj.get(e.from) ?? []), e.to]);
+let cycles = 0;
+const state = new Map<string, number>();
+const visit = (u: string) => {
+  state.set(u, 1);
+  for (const v of adj.get(u) ?? []) state.get(v) === 1 ? cycles++ : state.has(v) || visit(v);
+  state.set(u, 2);
+};
+for (const n of ids) if (!state.has(n)) visit(n);
+const hasEdge = (f: string, t: string, l: string) =>
+  edges.some((e: any) => e.from === f && e.to === t && e.label === l);
+console.log(JSON.stringify({ dangling_edges: dangling, cycles }));
+for (const [f, t, l] of [
+  ["GITHUB_LIST_REPOSITORY_ISSUES", "GITHUB_CREATE_AN_ISSUE_COMMENT", "issue_number"],
+  ["GITHUB_LIST_PULL_REQUESTS", "GITHUB_MERGE_A_PULL_REQUEST", "pull_number"],
+]) {
+  if (ids.has(f) && ids.has(t) && !hasEdge(f, t, l)) console.error(`WARNING: expected edge ${f} -> ${t} [${l}] missing`);
+}
+
 if (provenance < 0.8) {
   console.error(
     "WARNING: provenance < 0.8. Your node ids must be slugs from the catalog you were given.",
